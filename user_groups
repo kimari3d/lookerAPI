@@ -1,0 +1,58 @@
+
+!pip install looker_sdk
+
+import looker_sdk
+
+from typing import Optional, Sequence
+from looker_sdk.sdk.api40.methods import Looker40SDK
+from looker_sdk.sdk.api40.models import Role
+from looker_sdk import models40
+
+import json
+import base64
+import os
+
+os.environ["LOOKERSDK_BASE_URL"] = "https://" #If your looker URL has .cloud in it (hosted on GCP), do not include :19999 (ie: https://your.cloud.looker.com).
+os.environ["LOOKERSDK_API_VERSION"] = "4.0" #3.1 is the default version. You can change this to 4.0 if you want.
+os.environ["LOOKERSDK_VERIFY_SSL"] = "true" #Defaults to true if not set. SSL verification should generally be on unless you have a real good reason not to use it. Valid options: true, y, t, yes, 1.
+os.environ["LOOKERSDK_TIMEOUT"] = "120" #Seconds till request timeout. Standard default is 120.
+
+
+os.environ["LOOKERSDK_CLIENT_ID"] = "" #No defaults.
+os.environ["LOOKERSDK_CLIENT_SECRET"] = "" #No defaults. This should be protected at all costs. Please do not leave it sitting here, even if you don't share this document.
+
+
+print("All environment variables set.")
+
+sdk: Looker40SDK = looker_sdk.init40()
+
+def usergroup(email, group):
+  user = sdk.search_users(email=email)
+  if (user):
+    group = group.lower()
+    if (group != "all users"):
+      group = sdk.search_groups(name=group)
+      if (group):
+        user_groups = user[0].group_ids
+
+        for user_group in user_groups:
+          if (user_group != "1"):
+            #all user group cant be deleted
+            print("This user will be removed in this group: " + sdk.group(user_group).name)
+            if input("Are you sure you want to continue? (y/n)") == "y":
+              sdk.delete_group_user(group_id = user_group, user_id = user[0].id)
+
+        user_id = user[0].id
+        group_id = group[0].id
+
+        sdk.add_group_user(group_id=group_id, body=models40.GroupIdForGroupUserInclusion(user_id=user_id))
+        print("user_group assigned successfully")
+      else:
+        print("Group not available")
+    else:
+      print("Assign to a different group. Can't assign to All Users")
+
+  else:
+    print("User not available in All users group. Please input another email.")
+
+usergroup(email="geoffrey@yahoo.com", group = "Business users")
